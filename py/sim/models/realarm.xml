@@ -1,0 +1,116 @@
+<mujoco model="pick_place_arm">
+    <compiler angle="degree" coordinate="local" autolimits="true"/>
+    <option cone="elliptic" impratio="10"/>
+    <default>
+        <geom type="capsule" rgba="0.8 0.8 0.8 1" contype="1" conaffinity="1"/>
+        <joint damping="0.1"/>
+    </default>
+    <asset>
+        <texture name="grid" type="2d" builtin="checker" width="512" height="512"
+                 rgb1="0.9 0.9 0.9" rgb2="0.7 0.7 0.7"/>
+        <material name="gridmat" texture="grid" texrepeat="5 5"/>
+    </asset>
+    <worldbody>
+        <light pos="0 0 3" dir="0 0 -1"/>
+        <geom name="floor" type="plane" size="2 2 0.1" material="gridmat"/>
+        
+        <body name="base" pos="0 0 0.05 ">
+            <geom name="base_cyl" type="cylinder" size="0.1 0.05" pos="0 0 0.01" rgba="0.3 0.3 0.3 1"/>
+            <joint name="base_joint" type="hinge" axis="0 0 1" pos="0 0 0.01" range="-150 150" damping="1"/>
+            <body name="link1" pos="0 0 0.01">
+                <geom name="link1_geom" type="capsule" fromto="0 0 0.1 0.4 0 0.1" size="0.02" rgba="0.2 0.6 0.9 1"/>
+                <joint name="shoulder" type="hinge" axis="0 1 0" pos="0 0 0.1" range="-300 0" damping="1"/>
+
+                <body name="link2" pos="0.4 0 0.1">
+                    <geom name="link2_geom" type="capsule" fromto="0.4 0 -0.05 0.05 0 -0.05" size="0.02" rgba="0.2 0.8 0.6 1"/>
+                    <joint name="elbow" type="hinge" axis="0 1 0" pos="0 0 0" range="-180 180" damping="1"/>
+                    <site name="end_effector" pos="0.47 0 -0.05" size="0.01" rgba="1 0 0 1"/>
+
+                    <body name="finger1" pos="0.4 0 -0.05">
+                        <!-- visual finger -->
+                        <geom name="finger1_visual"
+                              type="box"
+                              size="0.015 0.005 0.02"
+                              pos="0.04 0.06 0"
+                              contype="0"
+                              conaffinity="0"/>
+
+                        <!-- actual gripping pad -->
+                        <geom name="finger1_pad"
+                              type="box"
+                              size="0.015 0.002 0.015"
+                              pos="0.04 0.055 0"
+                              friction="3 0.005 0.0001"
+                              solimp="0.95 0.99 0.001"
+                              solref="0.004 1"/>
+
+                        <joint name="finger1_joint"
+                               type="slide"
+                               axis="0 -1 0"
+                               pos="0.04 0.03 0"
+                               range="0 0.04"/>
+                    </body>
+                    <body name="finger2" pos="0.4 0 -0.05">
+                        <!-- visual finger -->
+                        <geom name="finger2_visual"
+                              type="box"
+                              size="0.015 0.005 0.02"
+                              pos="0.04 -0.06 0"
+                              contype="0"
+                              conaffinity="0"/>
+
+                        <!-- actual gripping pad -->
+                        <geom name="finger2_pad"
+                              type="box"
+                              size="0.015 0.002 0.015"
+                              pos="0.04 -0.055 0"
+                              friction="3 0.005 0.0001"
+                              solimp="0.95 0.99 0.001"
+                              solref="0.004 1"/>
+
+                        <joint name="finger2_joint"
+                               type="slide"
+                               axis="0 1 0"
+                               pos="0.04 -0.03 0"
+                               range="0 0.04"/>
+                    </body>
+                </body>
+            </body>
+        </body>
+
+        <body name="block" pos="-0.4 0 0.01">
+      <freejoint name="block_free"/>
+      <geom name="block_geom" type="box" size="0.02 0.02 0.02" rgba="0.2 0.2 0.9 1" friction="2" mass="0.01" priority="1"/>
+      <site name="block_site" pos="0 0 0" size="0.005"/>
+    </body>
+
+    <!-- Target placement marker -->
+    <body name="target" pos="0 0.4 0">
+      <geom name="target_geom" type="cylinder" size="0.03 0.005" rgba="0.2 0.9 0.2 0.6"/>
+      <site name="target_site" pos="0 0 0" size="0.005"/>
+    </body>
+    </worldbody>
+    <tendon>
+        <fixed name="gripper">
+            <joint joint="finger1_joint" coef="0.5"/>
+            <joint joint="finger2_joint" coef="0.5"/>
+        </fixed>
+    </tendon>
+    <actuator>
+        <position name="base_motor" joint="base_joint" kp="20" kv="5" ctrlrange="-3.14 3.14"/>
+        <position name="shoulder_motor" joint="shoulder" kp="20" kv="5" ctrlrange="-3.14 0" />
+        <position name="elbow_motor" joint="elbow" kp="20" ctrlrange="-3.14 3.14" kv="5"/>
+        <general name="gripper_motor"
+             tendon="gripper"  forcerange="-200 200"/>
+    </actuator>
+
+    <sensor>
+        <jointpos name="base_pos" joint="base_joint"/>
+        <jointpos name="shoulder_pos" joint="shoulder"/>
+        <jointpos name="elbow_pos" joint="elbow"/>
+        <jointpos name="gripper_pos" joint="finger1_joint"/>
+        <framepos name="ee_pos" objtype="site" objname="end_effector"/>
+        <framepos name="block_pos" objtype="body" objname="block"/>
+        <framepos name="target_pos" objtype="site" objname="target_site"/>
+    </sensor>
+</mujoco>

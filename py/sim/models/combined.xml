@@ -1,0 +1,63 @@
+<mujoco model="balls_arm">
+    <compiler angle="degree" coordinate="local" autolimits="true"/>
+    <option integrator="implicitfast" timestep="0.002"/>
+    <visual>
+        <global offwidth="640" offheight="480"/>
+    </visual>
+    <default>
+        <geom type="capsule" rgba="0.8 0.8 0.8 1" contype="1" conaffinity="1"/>
+        <joint damping="0.1"/>
+    </default>
+    <asset>
+        <texture name="grid" type="2d" builtin="checker" width="512" height="512"
+                 rgb1="0.9 0.9 0.9" rgb2="0.7 0.7 0.7"/>
+        <material name="gridmat" texture="grid" texrepeat="5 5"/>
+    </asset>
+    <worldbody>
+        <light name="main_light" pos="0 0 3" dir="0 0 -1" diffuse="0.8 0.8 0.8"/>
+
+        <!-- Checker floor keeps bright, saturated pixels out of the vision mask -->
+        <geom name="floor" type="plane" size="2 2 0.1" material="gridmat"/>
+
+        <!-- Top-down camera that feeds the vision pipeline -->
+        <!-- <camera name="tracking" pos="0 0 1" xyaxes="1 0 0 0 1 0" fovy="60"/> -->
+        <camera name="tracking" pos="0 0 1" xyaxes="1 0 0 0 1 0" projection="orthographic"
+            fovy="1.1547"/> <!-- orthographic camera -->
+
+        <body name="base" pos="0 0 0.05">
+            <geom name="base_cyl" type="cylinder" size="0.1 0.05" pos="0 0 0.01" rgba="0.3 0.3 0.3 1"/>
+            <joint name="base_joint" type="hinge" axis="0 0 1" pos="0 0 0.01" range="-150 150" damping="0"/>
+            <body name="link1" pos="0 0 0.01">
+                <geom name="link1_geom" type="capsule" fromto="0 0 0.1 0.4 0 0.1" size="0.005" rgba="0.2 0.6 0.9 1"/>
+                <joint name="shoulder" type="hinge" axis="0 1 0" pos="0 0 0.1" range="-300 0" damping="0"/>
+
+                <body name="link2" pos="0.4 0 0.1">
+                    <geom name="link2_geom" type="capsule" fromto="0.4 0 0 0.0 0 0" size="0.005" rgba="0.2 0.8 0.6 1"/>
+                    <joint name="elbow" type="hinge" axis="0 1 0" pos="0 0 0" range="-180 180" damping="0"/>
+                    <site name="end_effector" pos="0.4 0 0" size="0.01" rgba="1 0 0 1"/>
+                </body>
+            </body>
+        </body>
+
+        <!-- Simulated ball the vision pipeline will track.
+             Starts above the floor so keyboard forces push it freely. -->
+        <body name="ball" pos="0.5 0.2 0.08">
+            <freejoint/>
+            <geom name="ball_geom" type="sphere" size="0.0762" rgba="0.9 0.7 0.1 1"/>
+        </body>
+        <site name="ball_site" pos="0.4 0.3 0.1" size="0.01" rgba="1 1 0 1"/>
+    </worldbody>
+    <actuator>
+        <position name="base_motor" joint="base_joint" kp="512" kv="10" ctrlrange="-3.14 3.14"/>
+        <position name="shoulder_motor" joint="shoulder" kp="512" kv="10" ctrlrange="-3.14 0"/>
+        <position name="elbow_motor" joint="elbow" kp="512" kv="10" ctrlrange="-3.14 3.14"/>
+    </actuator>
+
+    <sensor>
+        <jointpos name="base_pos" joint="base_joint"/>
+        <jointpos name="shoulder_pos" joint="shoulder"/>
+        <jointpos name="elbow_pos" joint="elbow"/>
+        <framepos name="ee_pos" objtype="site" objname="end_effector"/>
+        <framepos name="ball_pos" objtype="body" objname="ball"/>
+    </sensor>
+</mujoco>
