@@ -25,7 +25,28 @@ struct PipelineHandle {
             },
             {
                 pipelineParams.lookaheadTime,
-                pipelineParams.pixelToMeterRatio
+                pipelineParams.trueRadius,
+                pipelineParams.armBaseHeight,
+                {
+                    {
+                        pipelineParams.camera.position[0],
+                        pipelineParams.camera.position[1],
+                        pipelineParams.camera.position[2]
+                    },
+                    {
+                        pipelineParams.camera.forward[0],
+                        pipelineParams.camera.forward[1],
+                        pipelineParams.camera.forward[2]
+                    },
+                    {
+                        pipelineParams.camera.up[0],
+                        pipelineParams.camera.up[1],
+                        pipelineParams.camera.up[2]
+                    },
+                    pipelineParams.camera.focalLength,
+                    pipelineParams.camera.principalX,
+                    pipelineParams.camera.principalY
+                }
             }
         )) {}
 
@@ -84,6 +105,18 @@ PipelineHandle* pipeline_create(
 
 void pipeline_destroy(PipelineHandle* handle) {
     delete handle;
+}
+
+int32_t pipeline_set_true_radius(PipelineHandle* handle, double radius) {
+    if (!handle || !handle->pipeline) {
+        return -1;
+    }
+    try {
+        handle->pipeline->setTrueRadius(radius);
+        return 0;
+    } catch (...) {
+        return -2;
+    }
 }
 
 }

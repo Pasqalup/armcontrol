@@ -14,10 +14,11 @@ from wrapper import (
     IKParameters,
     TrackingParameters,
     PipelineParameters,
+    CameraParameters,
 )
 TARGET_W, TARGET_H = 640, 480
 # Horizontal force applied to the ball per held key (Newtons).
-FORCE = 80.0
+FORCE = 140.0
 
 # MuJoCo simulation. render=True opens the interactive viewer window
 # (drag to orbit, scroll to zoom, and the sliders/actuators are live);
@@ -39,6 +40,37 @@ _BALL_BODY_ID = mujoco.mj_name2id(
 if _BALL_BODY_ID < 0:
     raise RuntimeError("no body named 'ball' in the model")
 
+_CAMERA_ID = mujoco.mj_name2id(
+    sim.model, mujoco.mjtObj.mjOBJ_CAMERA, "tracking"
+)
+if _CAMERA_ID < 0:
+    raise RuntimeError("no camera named 'tracking' in the model")
+if int(sim.model.cam_projection[_CAMERA_ID]) != 0:
+    raise RuntimeError("tracking camera must use perspective projection")
+_camera_rotation = sim.model.cam_mat0[_CAMERA_ID].reshape(3, 3)
+_camera_fovy = math.radians(float(sim.model.cam_fovy[_CAMERA_ID]))
+if not math.isfinite(_camera_fovy) or _camera_fovy <= 0.0:
+    raise RuntimeError("tracking camera has invalid perspective intrinsics")
+_ball_geom_id = mujoco.mj_name2id(
+    sim.model, mujoco.mjtObj.mjOBJ_GEOM, "ball_geom"
+)
+if _ball_geom_id < 0:
+    raise RuntimeError("no geometry named 'ball_geom' in the model")
+_shoulder_joint_id = mujoco.mj_name2id(
+    sim.model, mujoco.mjtObj.mjOBJ_JOINT, "shoulder"
+)
+if _shoulder_joint_id < 0:
+    raise RuntimeError("no joint named 'shoulder' in the model")
+_base_body_id = mujoco.mj_name2id(
+    sim.model, mujoco.mjtObj.mjOBJ_BODY, "base"
+)
+if _base_body_id < 0:
+    raise RuntimeError("no body named 'base' in the model")
+_arm_base_height = (
+    float(sim.model.body_pos[_base_body_id][2])
+    + float(sim.model.jnt_pos[_shoulder_joint_id][2])
+)
+
 ik = IKParameters(
     l1=0.40,
     l2=0.40,
@@ -55,7 +87,16 @@ tracking = TrackingParameters(
 
 pipeline_params = PipelineParameters(
     lookahead_time=0.5,
-    pixelToMeterRatio=415.8
+    true_radius=float(sim.model.geom_size[_ball_geom_id][0]),
+    arm_base_height=_arm_base_height,
+    camera=CameraParameters(
+        position=tuple(float(value) for value in sim.model.cam_pos[_CAMERA_ID]),
+        forward=tuple(float(value) for value in -_camera_rotation[:, 2]),
+        up=tuple(float(value) for value in _camera_rotation[:, 1]),
+        focal_length=TARGET_H / (2.0 * math.tan(_camera_fovy / 2.0)),
+        principal_x=TARGET_W / 2.0,
+        principal_y=TARGET_H / 2.0,
+    ),
 )
 
 
@@ -111,7 +152,7 @@ def ctrl_ball(pressed, sim=sim):
     ball_force[2] = 0.0  # no vertical push
 def control(base_angle, joint1_angle, joint2_angle):
     """Set the robot arm's joint angles."""
-    sim.data.ctrl[0] = -base_angle
+    sim.data.ctrl[0] = base_angle
     sim.data.ctrl[1] = -joint1_angle
     sim.data.ctrl[2] = joint2_angle
 with RobotPipeline(ik, tracking, pipeline_params, library_path="../build/Release/modeled_c.dll") as pipeline:
@@ -125,7 +166,7 @@ with RobotPipeline(ik, tracking, pipeline_params, library_path="../build/Release
         # Render the scene from the tracking camera's perspective.
         rgb_frame = sim.render_frame(camera="tracking", width=TARGET_W, height=TARGET_H)
         frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
-        contours, image, centers = runPipeline(frame,[0])
+        contours, image, centers = runPipeline(frame,[1])
 
 
         # Run the vision pipeline on the rendered image.

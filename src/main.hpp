@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pipeline.hpp"
+#include <cstdint>
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,11 +18,21 @@ typedef struct CTrackingParameters {
     double velocityAlpha;
     double radiusWeight;
     double maxSpeed;
-    bool useKalman;
+    int32_t useKalman;
 } CTrackingParameters;
+typedef struct CCameraParameters {
+    double position[3];
+    double forward[3];
+    double up[3];
+    double focalLength;
+    double principalX;
+    double principalY;
+} CCameraParameters;
 typedef struct CPipelineParameters {
     double lookaheadTime;
-    double pixelToMeterRatio;
+    double trueRadius;
+    double armBaseHeight;
+    CCameraParameters camera;
 } CPipelineParameters;
 typedef struct CIKResult {
     int errorCode;
@@ -34,6 +45,7 @@ typedef struct PipelineHandle PipelineHandle;
 PipelineHandle* pipeline_create(CIKParameters ikParams, CTrackingParameters trackingParams, CPipelineParameters pipelineParams);
 
 void pipeline_destroy(PipelineHandle* handle);
+int32_t pipeline_set_true_radius(PipelineHandle* handle, double radius);
 
 int32_t pipeline_update(
     PipelineHandle* handle, 

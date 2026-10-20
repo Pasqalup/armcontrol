@@ -2,7 +2,10 @@
 
 Build the C++ shared library first, then use:
 
-    from modeled_c import RobotPipeline, IKParameters, TrackingParameters, PipelineParameters
+    from modeled_c import (
+        RobotPipeline, IKParameters, TrackingParameters,
+        PipelineParameters, CameraParameters,
+    )
 
     with RobotPipeline(
         IKParameters(l1=0.3, l2=0.25),
@@ -15,7 +18,19 @@ Build the C++ shared library first, then use:
             max_speed=1000.0,
             use_kalman=False,
         ),
-        PipelineParameters(lookahead_time=0.1),
+        PipelineParameters(
+            lookahead_time=0.1,
+            true_radius=0.0762,
+            arm_base_height=0.15,
+            camera=CameraParameters(
+                position=(0.0, 0.0, 1.0),
+                forward=(0.0, 0.0, -1.0),
+                up=(0.0, 1.0, 0.0),
+                focal_length=415.8,
+                principal_x=320.0,
+                principal_y=240.0,
+            ),
+        ),
     ) as pipeline:
         result = pipeline.update([320.0, 240.0, 15.0], timestamp=1.0)
         print(result)
@@ -54,10 +69,23 @@ class _CTrackingParameters(ct.Structure):
     ]
 
 
+class _CCameraParameters(ct.Structure):
+    _fields_ = [
+        ("position", ct.c_double * 3),
+        ("forward", ct.c_double * 3),
+        ("up", ct.c_double * 3),
+        ("focalLength", ct.c_double),
+        ("principalX", ct.c_double),
+        ("principalY", ct.c_double),
+    ]
+
+
 class _CPipelineParameters(ct.Structure):
     _fields_ = [
         ("lookaheadTime", ct.c_double),
-        ("pixelToMeterRatio", ct.c_double),
+        ("trueRadius", ct.c_double),
+        ("armBaseHeight", ct.c_double),
+        ("camera", _CCameraParameters),
     ]
 
 
@@ -88,9 +116,21 @@ class TrackingParameters:
 
 
 @dataclass(frozen=True)
+class CameraParameters:
+    position: tuple[float, float, float]
+    forward: tuple[float, float, float]
+    up: tuple[float, float, float]
+    focal_length: float
+    principal_x: float
+    principal_y: float
+
+
+@dataclass(frozen=True)
 class PipelineParameters:
     lookahead_time: float
-    pixelToMeterRatio: float
+    true_radius: float
+    arm_base_height: float
+    camera: CameraParameters
 
 
 @dataclass(frozen=True)
@@ -150,8 +190,20 @@ class RobotPipeline:
             tracking.max_speed,
             int(tracking.use_kalman),
         )
-        c_pipeline = _CPipelineParameters(pipeline.lookahead_time)
-        c_pipeline.pixelToMeterRatio = pipeline.pixelToMeterRatio
+        c_camera = _CCameraParameters(
+            pipeline.camera.position,
+            pipeline.camera.forward,
+            pipeline.camera.up,
+            pipeline.camera.focal_length,
+            pipeline.camera.principal_x,
+            pipeline.camera.principal_y,
+        )
+        c_pipeline = _CPipelineParameters(
+            pipeline.lookahead_time,
+            pipeline.true_radius,
+            pipeline.arm_base_height,
+            c_camera,
+        )
 
         self._handle = self._lib.pipeline_create(c_ik, c_tracking, c_pipeline)
         if not self._handle:
@@ -176,6 +228,9 @@ class RobotPipeline:
 
         self._lib.pipeline_destroy.argtypes = [ct.c_void_p]
         self._lib.pipeline_destroy.restype = None
+
+        self._lib.pipeline_set_true_radius.argtypes = [ct.c_void_p, ct.c_double]
+        self._lib.pipeline_set_true_radius.restype = ct.c_int32
 
     def update(self, detections: Sequence[float] | Iterable[float], timestamp: float) -> IKOutput:
         """Process flat x,y,radius triples and return the native IK output."""
@@ -213,6 +268,16 @@ class RobotPipeline:
             theta2=float(output.theta2),
             theta3=float(output.theta3),
         )
+
+    def set_true_radius(self, radius: float) -> None:
+        """Update the physical object radius used for perspective depth."""
+        if not self._handle:
+            raise RuntimeError("Pipeline has been closed")
+        status = self._lib.pipeline_set_true_radius(self._handle, float(radius))
+        if status != 0:
+            raise ValueError(
+                f"pipeline_set_true_radius() failed with status {status}"
+            )
 
     def close(self) -> None:
         """Destroy the native handle. Safe to call more than once."""

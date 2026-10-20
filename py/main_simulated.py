@@ -4,6 +4,7 @@ import time
 
 import cv2
 import mujoco
+import numpy as np
 from pynput import keyboard
 
 from sim import MuJoCoSim
@@ -12,7 +13,7 @@ from vision import ObjectTracker, parse_centers, runPipeline
 
 TARGET_W, TARGET_H = 640, 480
 # Horizontal force applied to the ball per held key (Newtons).
-FORCE = 80.0
+FORCE = 140.0
 
 # MuJoCo simulation. render=True opens the interactive viewer window
 # (drag to orbit, scroll to zoom, and the sliders/actuators are live);
@@ -33,6 +34,45 @@ _BALL_BODY_ID = mujoco.mj_name2id(
 )
 if _BALL_BODY_ID < 0:
     raise RuntimeError("no body named 'ball' in the model")
+
+_CAMERA_ID = mujoco.mj_name2id(
+    sim.model, mujoco.mjtObj.mjOBJ_CAMERA, "tracking"
+)
+if _CAMERA_ID < 0:
+    raise RuntimeError("no camera named 'tracking' in the model")
+if int(sim.model.cam_projection[_CAMERA_ID]) != 0:
+    raise RuntimeError("tracking camera must use perspective projection")
+_camera_rotation = sim.model.cam_mat0[_CAMERA_ID].reshape(3, 3)
+_camera_position = sim.model.cam_pos[_CAMERA_ID].copy()
+_camera_forward = -_camera_rotation[:, 2]
+_camera_up = _camera_rotation[:, 1]
+_camera_right = _camera_rotation[:, 0]
+_camera_focal_length = TARGET_H / (
+    2.0 * math.tan(math.radians(float(sim.model.cam_fovy[_CAMERA_ID])) / 2.0)
+)
+if not math.isfinite(_camera_focal_length) or _camera_focal_length <= 0.0:
+    raise RuntimeError("tracking camera has invalid perspective intrinsics")
+_ball_geom_id = mujoco.mj_name2id(
+    sim.model, mujoco.mjtObj.mjOBJ_GEOM, "ball_geom"
+)
+if _ball_geom_id < 0:
+    raise RuntimeError("no geometry named 'ball_geom' in the model")
+_true_radius = float(sim.model.geom_size[_ball_geom_id][0])
+
+
+def unproject(pixel_x, pixel_y, pixel_radius):
+    """Estimate a world point from a perspective pixel measurement."""
+    if pixel_radius <= 0:
+        raise ValueError("pixel radius must be positive")
+    ray = (
+        (pixel_x - TARGET_W / 2.0) * _camera_right
+        - (pixel_y - TARGET_H / 2.0) * _camera_up
+        + _camera_focal_length * _camera_forward
+    )
+    ray /= np.linalg.norm(ray)
+    focal_to_radius = _camera_focal_length / pixel_radius
+    camera_distance = _true_radius * math.sqrt(1.0 + focal_to_radius**2)
+    return _camera_position + camera_distance * ray
 
 
 # intialize object tracker
@@ -114,7 +154,7 @@ def get_capsule_length(geom_name):
 
 def control(base_angle, joint1_angle, joint2_angle):
     """Set the robot arm's joint angles."""
-    sim.data.ctrl[0] = -base_angle
+    sim.data.ctrl[0] = base_angle
     sim.data.ctrl[1] = -joint1_angle
     sim.data.ctrl[2] = joint2_angle
 def vizpoint(x, y, z):
@@ -202,11 +242,15 @@ while True:
         # must scale pixels to meters, and center the origin at the center of the image
         predicted_x, predicted_y = obj.predict(0.5)
         if i % 10 == 0:  # only compute IK every 10 frames to reduce computation
-            position_world = ((predicted_x - TARGET_W / 2) / 415.8, (predicted_y - TARGET_H / 2) / 415.8)
+            position_world = unproject(predicted_x, predicted_y, obj.radius)
             print("World Position:", round(position_world[0], 3), round(position_world[1], 3))
 
-            vizpoint(position_world[0], position_world[1], 0.2)
-            coords = (position_world[0], position_world[1], 0.2 - base_offset)  # x, y, z coordinates of the target point
+            vizpoint(*position_world)
+            coords = (
+                position_world[0],
+                position_world[1],
+                position_world[2] - base_offset,
+            )
             try:
                 base_angle, joint1_angle, joint2_angle = ik_solver.solve(*coords)
                 print(f"IK solution for {coords}: base={math.degrees(base_angle):.1f}, "

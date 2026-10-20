@@ -145,6 +145,36 @@ std::array<double, 2> KalmanFilter::estimateVelocity() const {
     return {state_[2], state_[3]};
 }
 
+ScalarKalmanFilter::ScalarKalmanFilter(double measurementNoise,
+                                       double processNoise)
+    : measurementNoise_(measurementNoise), processNoise_(processNoise) {
+    if (measurementNoise < 0.0 || processNoise < 0.0) {
+        throw std::invalid_argument("noise values must be non-negative");
+    }
+}
+
+void ScalarKalmanFilter::reset(double value) {
+    state_ = value;
+    variance_ = 1.0;
+    initialized_ = true;
+}
+
+double ScalarKalmanFilter::update(double measurement) {
+    if (!initialized_) {
+        reset(measurement);
+        return state_;
+    }
+    variance_ += processNoise_;
+    const double gain = variance_ / (variance_ + measurementNoise_);
+    state_ += gain * (measurement - state_);
+    variance_ *= 1.0 - gain;
+    return state_;
+}
+
+double ScalarKalmanFilter::estimate() const {
+    return state_;
+}
+
 std::vector<DetectedObject> parseCenters(const std::vector<double>& centers) {
     if (centers.size() % 3 != 0) {
         throw std::invalid_argument(
@@ -162,7 +192,13 @@ TrackedObject::TrackedObject(int objectId, const DetectedObject& detection,
                              double timestamp)
     : id(objectId), x(detection.x), y(detection.y),
       radius(detection.radius), lastSeenTime(timestamp), predictedX(x),
-      predictedY(y) {}
+      predictedY(y) {
+    radiusFilter_.reset(detection.radius);
+}
+
+void TrackedObject::updateRadius(double measurement) {
+    radius = radiusFilter_.update(measurement);
+}
 
 std::array<double, 2> TrackedObject::predict(double time) const {
     if (time < 0.0) {
@@ -189,7 +225,7 @@ void TrackedObject::update(const DetectedObject& detection,
     }
     x = detection.x;
     y = detection.y;
-    radius = 0.7 * radius + 0.3 * detection.radius;
+    updateRadius(detection.radius);
     lastSeenTime = timestamp;
     missedFrames = 0;
     ++hits;
@@ -220,7 +256,7 @@ void KalmanTrackedObject::update(const DetectedObject& detection,
     y = position[1];
     vx = velocity[0];
     vy = velocity[1];
-    radius = 0.7 * radius + 0.3 * detection.radius;
+    updateRadius(detection.radius);
     lastSeenTime = timestamp;
     missedFrames = 0;
     ++hits;

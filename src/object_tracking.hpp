@@ -27,6 +27,23 @@ private:
     double lastUpdateDt_ = 0.0;
 };
 
+class ScalarKalmanFilter {
+public:
+    explicit ScalarKalmanFilter(double measurementNoise = 1.0,
+                                double processNoise = 0.1);
+
+    void reset(double value);
+    double update(double measurement);
+    double estimate() const;
+
+private:
+    double measurementNoise_;
+    double processNoise_;
+    double state_ = 0.0;
+    double variance_ = 1.0;
+    bool initialized_ = false;
+};
+
 struct DetectedObject {
     double x;
     double y;
@@ -58,6 +75,12 @@ public:
     bool confirmed = false;
     double predictedX;
     double predictedY;
+
+protected:
+    void updateRadius(double measurement);
+
+private:
+    ScalarKalmanFilter radiusFilter_;
 };
 
 class KalmanTrackedObject final : public TrackedObject {

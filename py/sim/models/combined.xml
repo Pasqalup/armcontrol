@@ -3,6 +3,8 @@
     <option integrator="implicitfast" timestep="0.002"/>
     <visual>
         <global offwidth="640" offheight="480"/>
+                <headlight ambient="0.6 0.6 0.6" diffuse="0.4 0.4 0.4" specular="0 0 0"/>
+
     </visual>
     <default>
         <geom type="capsule" rgba="0.8 0.8 0.8 1" contype="1" conaffinity="1"/>
@@ -14,15 +16,18 @@
         <material name="gridmat" texture="grid" texrepeat="5 5"/>
     </asset>
     <worldbody>
-        <light name="main_light" pos="0 0 3" dir="0 0 -1" diffuse="0.8 0.8 0.8"/>
+        <!-- <light name="main_light" pos="0 0 3" dir="0 0 -1" diffuse="0.8 0.8 0.8"/> -->
 
         <!-- Checker floor keeps bright, saturated pixels out of the vision mask -->
-        <geom name="floor" type="plane" size="2 2 0.1" material="gridmat"/>
+        <geom name="floor" type="plane" size="2 2 0.1" material="gridmat"
+              contype="3" conaffinity="3"/>
 
-        <!-- Top-down camera that feeds the vision pipeline -->
-        <!-- <camera name="tracking" pos="0 0 1" xyaxes="1 0 0 0 1 0" fovy="60"/> -->
-        <camera name="tracking" pos="0 0 1" xyaxes="1 0 0 0 1 0" projection="orthographic"
-            fovy="1.1547"/> <!-- orthographic camera -->
+        <!-- Fixed off-axis perspective camera that feeds the vision pipeline -->
+        <camera name="tracking" pos="0 0 1.2" 
+            xyaxes="0 -1 0 1 0 0.4"
+            projection="perspective" fovy="60"/>
+        <!-- <camera name="tracking" pos="0 0 1.2"
+        xyaxes="1 0 0.05 0 1 0" projection="perspective" fovy="60"/> -->
 
         <body name="base" pos="0 0 0.05">
             <geom name="base_cyl" type="cylinder" size="0.1 0.05" pos="0 0 0.01" rgba="0.3 0.3 0.3 1"/>
@@ -41,11 +46,12 @@
 
         <!-- Simulated ball the vision pipeline will track.
              Starts above the floor so keyboard forces push it freely. -->
-        <body name="ball" pos="0.5 0.2 0.08">
+        <body name="ball" pos="0.5 0.2 0.11">
             <freejoint/>
-            <geom name="ball_geom" type="sphere" size="0.0762" rgba="0.9 0.7 0.1 1"/>
+            <geom name="ball_geom" type="sphere" size="0.1016" rgba="1 0 0 1"
+                  contype="2" conaffinity="2"/>
         </body>
-        <site name="ball_site" pos="0.4 0.3 0.1" size="0.01" rgba="1 1 0 1"/>
+        <site name="ball_site" pos="0.4 0.3 0.1" size="0.001" rgba="1 1 0 1"/>
     </worldbody>
     <actuator>
         <position name="base_motor" joint="base_joint" kp="512" kv="10" ctrlrange="-3.14 3.14"/>

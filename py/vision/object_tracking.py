@@ -3,6 +3,34 @@
 import numpy as np
 
 
+class ScalarKalmanFilter:
+    """One-dimensional Kalman filter for the measured object radius."""
+
+    def __init__(self, measurement_noise=1.0, process_noise=0.1):
+        if measurement_noise < 0 or process_noise < 0:
+            raise ValueError("noise values must be non-negative")
+        self.measurement_noise = measurement_noise
+        self.process_noise = process_noise
+        self.state = 0.0
+        self.variance = 1.0
+        self.initialized = False
+
+    def reset(self, value):
+        self.state = float(value)
+        self.variance = 1.0
+        self.initialized = True
+
+    def update(self, measurement):
+        if not self.initialized:
+            self.reset(measurement)
+            return self.state
+        self.variance += self.process_noise
+        gain = self.variance / (self.variance + self.measurement_noise)
+        self.state += gain * (float(measurement) - self.state)
+        self.variance *= 1.0 - gain
+        return self.state
+
+
 class KalmanFilter:
     """Discrete constant-velocity Kalman filter for (x, y, vx, vy).
 
@@ -105,6 +133,8 @@ class TrackedObject:
         self.x = detection.x
         self.y = detection.y
         self.radius = detection.radius
+        self.radius_filter = ScalarKalmanFilter()
+        self.radius_filter.reset(detection.radius)
         self.vx = 0.0
         self.vy = 0.0
         self.last_seen_time = timestamp
@@ -149,7 +179,7 @@ class TrackedObject:
 
         self.x = detection.x
         self.y = detection.y
-        self.radius = 0.7 * self.radius + 0.3 * detection.radius
+        self.radius = self.radius_filter.update(detection.radius)
         self.last_seen_time = timestamp
         self.missed_frames = 0
         self.hits += 1
@@ -161,6 +191,8 @@ class KalmanTrackedObject:
     def __init__(self, object_id, detection, timestamp, kf=None):
         self.id = object_id
         self.radius = detection.radius
+        self.radius_filter = ScalarKalmanFilter()
+        self.radius_filter.reset(detection.radius)
 
         self.kf = kf if kf is not None else KalmanFilter()
         self.kf.reset(detection.x, detection.y, 0.0)
@@ -200,7 +232,7 @@ class KalmanTrackedObject:
         self.kf.update(detection.x, detection.y, dt)
         self.x, self.y = self.kf.estimate_position()
         self.vx, self.vy = self.kf.estimate_velocity()
-        self.radius = 0.7 * self.radius + 0.3 * detection.radius
+        self.radius = self.radius_filter.update(detection.radius)
         self.last_seen_time = timestamp
         self.missed_frames = 0
         self.hits += 1
