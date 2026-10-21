@@ -161,13 +161,21 @@ class MuJoCoSim:
     # Offscreen camera rendering
     # ------------------------------------------------------------------
 
-    def render_frame(self, camera=0, width=640, height=480):
+    def render_frame(self, camera=0, width=640, height=480, scene_option=None, hide_geom_groups=()):
         """Render one offscreen frame from a model camera.
 
         ``camera`` may be a camera id or a camera name from the MJCF.
         Returns a uint8 array shaped ``(height, width, 3)`` in RGB order;
         convert with ``cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)`` before
         passing it to the vision pipeline.
+
+        ``scene_option``: an optional ``MjvOption`` used when populating the
+        scene. By default the arm's visual group (1) is hidden so the vision
+        camera only sees the floor and the ball; pass a custom ``MjvOption``
+        to control this (e.g. reset 1 to see the arm again).
+
+        ``hide_geom_groups``: extra geom groups (0-5) to exclude from the
+        rendered scene, in addition to the arm group.
         """
         if isinstance(camera, str):
             camera_id = mujoco.mj_name2id(
@@ -188,7 +196,15 @@ class MuJoCoSim:
         # viewer is open.
         self._ensure_renderer(width, height)
 
-        self._renderer.update_scene(self.data, camera_id)
+        # Default scene option: everything visible except the arm's group (1),
+        # which the viewer/tracking camera should not feed the vision pipeline.
+        if scene_option is None:
+            scene_option = mujoco.MjvOption()
+            scene_option.geomgroup[1] = 0
+        for group in hide_geom_groups:
+            scene_option.geomgroup[group] = 0
+
+        self._renderer.update_scene(self.data, camera_id, scene_option)
         return self._renderer.render()
 
     def _ensure_renderer(self, width, height):

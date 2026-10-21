@@ -1,0 +1,83 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "host-jni",
+      "displayName": "Host JNI (JDK)",
+      "binaryDir": "${sourceDir}/build/host-jni",
+      "cacheVariables": {
+        "MODELED_BUILD_JNI": "ON",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "android-armv7a",
+      "displayName": "Android armeabi-v7a",
+      "generator": "MinGW Makefiles",
+      "binaryDir": "${sourceDir}/build/android/armeabi-v7a",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+        "CMAKE_MAKE_PROGRAM": "make",
+        "ANDROID_ABI": "armeabi-v7a",
+        "ANDROID_PLATFORM": "android-24",
+        "ANDROID_STL": "c++_static",
+        "MODELED_BUILD_JNI": "ON",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "android-arm64",
+      "displayName": "Android arm64-v8a",
+      "generator": "MinGW Makefiles",
+      "binaryDir": "${sourceDir}/build/android/arm64-v8a",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+        "CMAKE_MAKE_PROGRAM": "make",
+        "ANDROID_ABI": "arm64-v8a",
+        "ANDROID_PLATFORM": "android-24",
+        "ANDROID_STL": "c++_static",
+        "MODELED_BUILD_JNI": "ON",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "android-x86_64",
+      "displayName": "Android x86_64",
+      "generator": "MinGW Makefiles",
+      "binaryDir": "${sourceDir}/build/android/x86_64",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+        "CMAKE_MAKE_PROGRAM": "make",
+        "ANDROID_ABI": "x86_64",
+        "ANDROID_PLATFORM": "android-24",
+        "ANDROID_STL": "c++_static",
+        "MODELED_BUILD_JNI": "ON",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "host-jni",
+      "configurePreset": "host-jni",
+      "configuration": "Release"
+    },
+    {
+      "name": "android-armv7a",
+      "configurePreset": "android-armv7a"
+    },
+    {
+      "name": "android-arm64",
+      "configurePreset": "android-arm64"
+    },
+    {
+      "name": "android-x86_64",
+      "configurePreset": "android-x86_64"
+    }
+  ]
+}

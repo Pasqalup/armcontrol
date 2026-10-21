@@ -29,17 +29,21 @@
         <!-- <camera name="tracking" pos="0 0 1.2"
         xyaxes="1 0 0.05 0 1 0" projection="perspective" fovy="60"/> -->
 
+        <!-- Robot arm. geoms (and the end-effector site) live in visual group 1
+             so the offscreen "tracking" camera can render the scene without the
+             arm (mujoco_sim.render_frame hides group 1). The interactive viewer
+             uses the default group mask and shows everything. -->
         <body name="base" pos="0 0 0.05">
-            <geom name="base_cyl" type="cylinder" size="0.1 0.05" pos="0 0 0.01" rgba="0.3 0.3 0.3 1"/>
+            <geom name="base_cyl" type="cylinder" size="0.1 0.05" pos="0 0 0.01" group="1" rgba="0.3 0.3 0.3 1"/>
             <joint name="base_joint" type="hinge" axis="0 0 1" pos="0 0 0.01" range="-150 150" damping="0"/>
             <body name="link1" pos="0 0 0.01">
-                <geom name="link1_geom" type="capsule" fromto="0 0 0.1 0.4 0 0.1" size="0.005" rgba="0.2 0.6 0.9 1"/>
+                <geom name="link1_geom" type="capsule" fromto="0 0 0.1 0.4 0 0.1" size="0.005" group="1" rgba="0.2 0.6 0.9 1"/>
                 <joint name="shoulder" type="hinge" axis="0 1 0" pos="0 0 0.1" range="-300 0" damping="0"/>
 
                 <body name="link2" pos="0.4 0 0.1">
-                    <geom name="link2_geom" type="capsule" fromto="0.4 0 0 0.0 0 0" size="0.005" rgba="0.2 0.8 0.6 1"/>
+                    <geom name="link2_geom" type="capsule" fromto="0.4 0 0 0.0 0 0" size="0.005" group="1" rgba="0.2 0.8 0.6 1"/>
                     <joint name="elbow" type="hinge" axis="0 1 0" pos="0 0 0" range="-180 180" damping="0"/>
-                    <site name="end_effector" pos="0.4 0 0" size="0.01" rgba="1 0 0 1"/>
+                    <site name="end_effector" pos="0.4 0 0" size="0.01" group="1" rgba="1 0 0 1"/>
                 </body>
             </body>
         </body>
