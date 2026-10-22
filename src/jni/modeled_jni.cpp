@@ -75,7 +75,7 @@ int requireIntInRange(double value, int minimum, int maximum,
 extern "C" {
 
 JNIEXPORT jlong JNICALL
-Java_org_firstinspires_ftc_teamcode_modeled_NativePipeline_nativeCreate(
+Java_com_flamingphoenix_nativebridge_modeled_NativePipeline_nativeCreate(
     JNIEnv* env, jclass, jdoubleArray ikArray, jdoubleArray trackingArray,
     jintArray trackingIntsArray, jdoubleArray pipelineArray,
     jdoubleArray cameraArray) {
@@ -166,7 +166,7 @@ Java_org_firstinspires_ftc_teamcode_modeled_NativePipeline_nativeCreate(
 }
 
 JNIEXPORT jint JNICALL
-Java_org_firstinspires_ftc_teamcode_modeled_NativePipeline_nativeUpdate(
+Java_com_flamingphoenix_nativebridge_modeled_NativePipeline_nativeUpdate(
     JNIEnv* env, jclass, jlong handleValue, jdoubleArray detectionsArray,
     jdouble timestamp, jdoubleArray outArray) {
     try {
@@ -223,7 +223,7 @@ Java_org_firstinspires_ftc_teamcode_modeled_NativePipeline_nativeUpdate(
 }
 
 JNIEXPORT jint JNICALL
-Java_org_firstinspires_ftc_teamcode_modeled_NativePipeline_nativeSetTrueRadius(
+Java_com_flamingphoenix_nativebridge_modeled_NativePipeline_nativeSetTrueRadius(
     JNIEnv* env, jclass, jlong handleValue, jdouble radius) {
     try {
         PipelineHandle* handle = handleFromValue(handleValue);
@@ -246,7 +246,7 @@ Java_org_firstinspires_ftc_teamcode_modeled_NativePipeline_nativeSetTrueRadius(
 }
 
 JNIEXPORT void JNICALL
-Java_org_firstinspires_ftc_teamcode_modeled_NativePipeline_nativeDestroy(
+Java_com_flamingphoenix_nativebridge_modeled_NativePipeline_nativeDestroy(
     JNIEnv*, jclass, jlong handleValue) {
     if (handleValue == 0) {
         return;
